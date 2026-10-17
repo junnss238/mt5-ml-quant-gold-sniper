@@ -17,13 +17,13 @@ The engine operates on a multi-tier confluence decision tree, executing market o
 
 ```plaintext
                    ┌───────────────────────────────────┐
-                   │    Live Market Ingestion (M1)    │
+                   │    Live Market Ingestion (M1)     │
                    │    MetaTrader 5 Real-Time Feed    │
                    └─────────────────┬─────────────────┘
                                      │
                    ┌─────────────────▼─────────────────┐
                    │     Pre-Trade Risk & Spread       │
-                   │   Filter (Spread ≤ Threshold)     │
+                   │   Filter (Spread <= Threshold)    │
                    └─────────────────┬─────────────────┘
                                      │
          ┌───────────────────────────┴───────────────────────────┐
@@ -43,7 +43,7 @@ The engine operates on a multi-tier confluence decision tree, executing market o
                                 └────────────┬────────────┘
                                              │
                                 ┌────────────▼────────────┐
-                                │   Confluence Score ≥ 3  │
+                                │   Confluence Score >= 3 │
                                 └────────────┬────────────┘
                                              │
                         ┌────────────────────┴────────────────────┐
@@ -63,24 +63,24 @@ The engine operates on a multi-tier confluence decision tree, executing market o
 ### 1. 🤖 Ensemble Machine Learning Inference (`MachineLearning.py`)
 * **Rolling Re-Training:** Continuously trains an ensemble `RandomForestClassifier` (100 estimators) over a dynamic window of 3,000 M1 bars.
 * **Engineered Feature Space:**
-  * Relative Strength Index ($RSI_{14}$)
-  * Moving Average Convergence Divergence ($MACD$ histogram & signal divergence)
-  * Normalized ATR Volatility ($ATR_{14}$)
-  * Multi-EMA trend orientation ($EMA_{9}, EMA_{21}, EMA_{50}$)
-  * Bollinger Bands %b dynamic volatility expansion.
-* **Confidence Gating:** Trades are rejected unless model directional confidence satisfies $P(Direction) \ge \tau_{confidence}$.
+  * Relative Strength Index (`RSI-14`)
+  * Moving Average Convergence Divergence (`MACD` histogram & signal divergence)
+  * Normalized ATR Volatility (`ATR-14`)
+  * Multi-EMA trend orientation (`EMA-9`, `EMA-21`, `EMA-50`)
+  * Bollinger Bands `%b` dynamic volatility expansion
+* **Confidence Gating:** Position entries are triggered only when model probability satisfies `P(Direction) >= threshold_confidence` (e.g. `confidence >= 0.65`).
 
 ### 2. 🏛️ Institutional Price Action & Liquidity Confluence
 * **Fair Value Gap (FVG):** Detects 3-bar institutional displacement imbalances:
-  $$\text{Bullish FVG} = \text{Low}_{i} > \text{High}_{i-2}$$
-  $$\text{Bearish FVG} = \text{High}_{i} < \text{Low}_{i-2}$$
-* **Multi-Timeframe Trend Confirmation:** M1 scalping triggers must align with the broader M5 directional bias ($EMA_{50}$ slope) to prevent false breakouts.
-* **Dynamic Spread Guard:** Live spread evaluation against dynamic thresholds to prevent slippage during rollover or news releases.
+  * `Bullish FVG`: `Low[i] > High[i-2]`
+  * `Bearish FVG`: `High[i] < Low[i-2]`
+* **Multi-Timeframe Trend Confirmation:** M1 scalping triggers must strictly align with the broader M5 directional bias (`EMA-50` slope) to eliminate false breakouts.
+* **Dynamic Spread Guard:** Continuous tick-level spread evaluation against configurable thresholds to eliminate slippage during liquidity gaps or news events.
 
 ### 3. 🛡️ Risk Management & Capital Preservation
-* **Dynamic Breakeven Trailing:** Position stop-loss auto-shifts to Breakeven $+ \delta$ immediately once profit targets ($1.5 \times ATR$) are reached.
-* **Daily Equity Drawdown Cutoff:** Hard-coded circuit breaker terminating bot execution if account equity drops below daily drawdown thresholds (e.g. 95% of initial balance).
-* **Idempotent Magic Number Isolation:** All orders tagged with unique Magic Numbers for isolated multi-strategy operation on single accounts.
+* **Dynamic Breakeven Trailing:** Stop-loss auto-shifts to `Breakeven + offset` as soon as profit targets (`1.5 x ATR`) are locked.
+* **Daily Equity Drawdown Cutoff:** Hard circuit breaker terminating execution if account equity drops below daily drawdown thresholds (e.g. 95% of initial equity).
+* **Idempotent Magic Number Isolation:** Orders tagged with distinct Magic Numbers for isolated multi-strategy routing on a single broker account.
 
 ---
 
